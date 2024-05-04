@@ -1,0 +1,50 @@
+name: Build
+on:
+  push:
+    branches:
+      - '*'
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Build App
+        run: |
+          bash ./gradlew assembleDebug
+
+      - name: Move files
+        run: |
+          mv app/build/outputs/apk/debug/app-debug.apk app-debug.apk
+
+      - name: Build Changelog
+        if: ${{ github.event.head_commit.message != '' }}
+        id: changelog
+        uses: ardalanamini/auto-changelog@v3
+        with:
+          mention-authors: false
+          mention-new-contributors: false
+          include-compare: false
+          semver: false
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: app-debug
+          path: app-debug.apk
+
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "*.apk"
+          token: ${{ github.token }}
+          generateReleaseNotes: true
